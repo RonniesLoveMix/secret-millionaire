@@ -50,4 +50,19 @@ const tx=db.transaction(()=>{players.forEach((p,i)=>db.prepare('UPDATE players S
 app.post('/api/admin/close',safe((req,res)=>{if(!isAdmin(req))return fail(res,'Unauthorized.',401);if(get('started')!=='true')return fail(res,'Game not started.');put('closed','true');res.json({ok:true});}));
 app.post('/api/admin/reveal',safe((req,res)=>{if(!isAdmin(req))return fail(res,'Unauthorized.',401);if(get('closed')!=='true')return fail(res,'Close missions first.');if(db.prepare('SELECT COUNT(*) n FROM players WHERE vote IS NOT NULL').get().n!==12)return fail(res,'All 12 players must vote.');put('revealed','true');res.json({ok:true});}));
 if(process.env.RENDER&&!process.env.DB_PATH)console.error('CRITICAL: DB_PATH not configured; Render local data may disappear on redeploy. Do not invite players.');
-app.listen(process.env.PORT||3000,()=>console.log('Secret Millionaire running'));
+app.post('/api/change-name', auth, safe((req, res) => {
+  const name = String(req.body.name || '').trim();
+
+  if (name.length < 2 || name.length > 60) {
+    return fail(res, 'Enter a name between 2 and 60 characters.');
+  }
+
+  if (get('started') === 'true') {
+    return fail(res, 'Names cannot be changed after the game starts.');
+  }
+
+  db.prepare('UPDATE players SET name=? WHERE id=?')
+    .run(name, req.player.id);
+
+  res.json({ok:true});
+}));app.listen(process.env.PORT||3000,()=>console.log('Secret Millionaire running'));
