@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10192a"><title>The Secret Millionaire</title>
+<style>
+body{margin:0;background:#10192a;color:#f7f1df;font:16px system-ui,sans-serif}main{max-width:540px;margin:auto;padding:30px 20px}h1{font:700 2.4rem Georgia,serif;color:#e9c879}h2{color:#e9c879}input,select,button{box-sizing:border-box;width:100%;padding:15px;margin:8px 0;border-radius:10px;border:1px solid #46546a;font-size:16px}input,select{background:#24334a;color:white}button{background:#e9c879;color:#10192a;font-weight:800;cursor:pointer}.card{padding:18px;margin:14px 0;background:#1c2a3e;border:1px solid #3a4960;border-radius:14px}.muted{color:#bbc5d2}label{display:block;margin:12px 0}small{color:#c4cedb}.hide{display:none}.gold{color:#e9c879}.reveal{padding:30px 12px;text-align:center;border:3px solid #e9c879;border-radius:18px;background:#302717;box-shadow:0 0 35px #b08c3855}.reveal h1{font-size:clamp(2.8rem,12vw,5rem);line-height:1.08}.reveal p{font-size:1.35rem}
+</style></head><body><main>
+<div class="gold">◆ PRIVATE WEEKEND GAME ◆</div><h1>VENTURA 2026</h1><h2>RONNIES SECRET MILLIONAIRE EXTRAVAGANZA!</h2><p class="muted">Everyone has a secret. Someone has a fortune.</p>
+<div id="login" class="card"><h2>Unlock your vault</h2><input id="phone" placeholder="Cellphone number" inputmode="tel"><input id="pin" placeholder="Private PIN (6–12 digits)" type="password" inputmode="numeric"><input id="name" placeholder="First name (for new players)"><button onclick="go('login')">Sign in</button><button onclick="go('register')">Register</button><small>Use a private PIN, not your South African ID number.</small></div><div id="app"></div></main>
+<script>
+let token=sessionStorage.getItem('sm_token');const el=id=>document.getElementById(id);
+async function api(path,body){const r=await fetch('/api/'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(token||'')},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
+async function go(action){try{const d=await api(action,{phone:el('phone').value,pin:el('pin').value,name:el('name').value});token=d.token;sessionStorage.setItem('sm_token',token);render()}catch(e){alert(e.message)}}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function render(){if(!token)return;try{const d=await api('me');el('login').classList.add('hide');let html='';
+if(d.revealed){const m=d.result.find(p=>p.role==='SECRET MILLIONAIRE');html='<div class="reveal"><p>THE GRAND REVEAL</p><h1>I AM THE SECRET MILLIONAIRE!</h1><h2>'+esc(m?.name||'')+'</h2></div><div class="card"><p>All completed missions: '+d.result.reduce((s,p)=>s+p.completed.length,0)+'</p></div>'}
+else{html='<div class="card"><h2>Welcome, '+esc(d.name)+'</h2>';
+if(!d.started){html+='<p>Your vault is sealed. Scheduled unlock: Thursday 22 October at 20:00 (South African time).</p><p>All 12 players must be registered before the vaults unlock.</p></div>'}
+else{html+='<p class="gold">CONFIDENTIAL IDENTITY</p><h2>'+esc(d.role)+'</h2><p>Keep your identity and missions private.</p></div><h2>Your five hidden agendas</h2>';
+d.missions.forEach((m,i)=>{html+='<div class="card"><strong>Agenda '+(i+1)+'</strong><p>'+esc(m)+'</p><label><input style="width:auto" type="checkbox" '+(d.completed.includes(i)?'checked':'')+' onchange="complete('+i+')"> Completed</label></div>'});
+if(d.votingOpen){html+='<div class="card"><h2>Final vote</h2><p>Who is the Secret Millionaire?</p><p>'+d.votes+' of 12 votes received.</p>';
+if(!d.voted){html+='<select id="vote"><option value="">Choose a player</option>'+d.players.filter(p=>p.id!==d.id).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select><button onclick="vote()">Submit secret vote</button>'}else{html+='<p class="gold">Your vote is locked in. Thank you!</p>'}html+='</div>';
+if(d.canReveal){html+='<div class="card"><h2>The moment is yours</h2><p>All 12 votes are in. Wait until everyone is gathered, then reveal yourself on this phone.</p><button onclick="revealMyself()">REVEAL MYSELF</button></div>'}else if(d.votes===12){html+='<div class="card"><p>All votes are in. Gather everyone for the Secret Millionaire’s reveal!</p></div>'}}
+else{html+='<div class="card"><p>Final voting opens Saturday 24 October at 20:00. The reveal happens when everyone has voted and the Millionaire is ready.</p></div>'}}}
+html+='<button onclick="changeName()">Change my name</button>'
+html+='<button onclick="logout()">Sign out</button>';el('app').innerHTML=html;
+}catch(e){el('app').innerHTML='<p>'+esc(e.message)+'</p><button onclick="logout()">Sign in again</button>'}}
+async function changeName(){const name=prompt('Enter your name:');if(!name)return;try{await api('change-name',{name:name.trim()});await render()}catch(e){alert(e.message)}}
+async function complete(index){try{await api('complete',{index});render()}catch(e){alert(e.message)}}
+async function vote(){const id=Number(el('vote')?.value);if(!id){alert('Choose a player first.');return}if(!confirm('Submit your final vote?'))return;try{await api('vote',{id});render()}catch(e){alert(e.message)}}
+async function revealMyself(){if(!confirm('Everyone gathered? This will reveal your identity to all players.'))return;try{await api('reveal-myself',{});render()}catch(e){alert(e.message)}}
+function logout(){sessionStorage.removeItem('sm_token');location.reload()}
+render();setInterval(()=>{if(token)render()},15000);
+</script></body></html>
