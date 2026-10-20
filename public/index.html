@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -111,10 +110,21 @@ async function render(){
    }
   }
 
-  html+='</div><button onclick="logout()">Sign out</button>';
+  html+='</div><button onclick="changeName()">Change my name</button><button onclick="logout()">Sign out</button>';
   el('app').innerHTML=html;
  }catch(e){
   el('app').innerHTML='<p>'+esc(e.message)+'</p><button onclick="logout()">Sign in again</button>';
+ }
+}
+
+async function changeName(){
+ const name=prompt('Enter your name:');
+ if(!name)return;
+ try{
+  await api('change-name',{name:name.trim()});
+  await render();
+ }catch(e){
+  alert(e.message);
  }
 }
 
@@ -142,3 +152,4 @@ setInterval(()=>{if(token)render()},60000);
 </script>
 </body>
 </html>
+
